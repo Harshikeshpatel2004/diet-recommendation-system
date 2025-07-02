@@ -1,14 +1,7 @@
 services:
   - type: web
     name: streamlit-frontend
-    env: python
-    buildCommand: pip install -r streamlit_frontend/requirements.txt
-    startCommand: streamlit run streamlit_frontend/app.py
-    runtime: python
+    env: docker
+    dockerfilePath: Streamlit_Frontend/Dockerfile
+    buildContext: .
     plan: free
-    buildFilter:
-      paths:
-        - streamlit_frontend/**/*
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.13
