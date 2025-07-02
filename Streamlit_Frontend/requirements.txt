@@ -1,5 +1,4 @@
-setuptools>=61.0.0
-wheel
+setuptools>=65.5.0
 
 beautifulsoup4==4.11.1
 pandas==1.5.1
