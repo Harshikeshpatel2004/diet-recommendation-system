@@ -18,5 +18,5 @@ class Generator:
             'ingredients':self.ingredients,
             'params':self.params
         }
-        response=requests.post(url='http://backend:8080/predict/',data=json.dumps(request))
+        response=requests.post(url='https://diet-backend-keht.onrender.com/predict/',data=json.dumps(request), headers={"Content-Type": "application/json"})
         return response
