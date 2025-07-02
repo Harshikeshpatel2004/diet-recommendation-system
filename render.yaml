@@ -1,7 +1,9 @@
 services:
   - type: web
-    name: streamlit-frontend
+    name: diet-frontend
     env: docker
+    repo: https://github.com/Harshikeshpatel2004/DIET_RECOMMENDATION-_SYSTEM
     dockerfilePath: Streamlit_Frontend/Dockerfile
-    buildContext: .
-    plan: free
+    buildFilter:
+      paths:
+        - Streamlit_Frontend/**

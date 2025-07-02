@@ -1,18 +1,18 @@
+# Use stable Python version
 FROM python:3.10-slim
 
-# Install build tools & update pip
-RUN apt-get update && apt-get install -y build-essential && pip install --upgrade pip
-
-# Create and set working directory
+# Set working directory
 WORKDIR /app
 
-# Copy source and install dependencies
-COPY Streamlit_Frontend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
-COPY Streamlit_Frontend ./
+# Copy all frontend code
+COPY . .
 
-# Expose default port
+# Upgrade pip and install requirements
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# Expose Streamlit port
 EXPOSE 8501
 
-# Run Streamlit
+# Start Streamlit app
 CMD ["streamlit", "run", "Generate_Recommendation.py", "--server.port=8501", "--server.enableCORS=false"]
