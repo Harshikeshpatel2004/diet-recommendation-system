@@ -15,4 +15,4 @@ RUN pip install -r requirements.txt
 EXPOSE 8501
 
 # Start Streamlit app
-CMD ["streamlit", "run", "Generate_Recommendation.py", "--server.port=8501", "--server.enableCORS=false"]
+CMD ["streamlit", "run", "Generate_Recommendations.py", "--server.port=8501", "--server.enableCORS=false"]
