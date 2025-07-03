@@ -19,4 +19,6 @@ class Generator:
             'params':self.params
         }
         response=requests.post(url='https://diet-backend-keht.onrender.com/predict/',data=json.dumps(request), headers={"Content-Type": "application/json"})
+        print("Response status:", response.status_code)
+        print("Response text:", response.text)
         return response
