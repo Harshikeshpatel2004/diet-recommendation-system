@@ -2,10 +2,10 @@
 FROM python:3.10
 
 # Set working directory
-WORKDIR /app/FastAPI_Backend
+WORKDIR /app
 
 # Copy all project files to container
-COPY FastAPI_Backend /app/FastAPI_Backend
+COPY . /app
 
 # Install dependencies
 RUN pip install --upgrade pip
