@@ -6,6 +6,14 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class MockResponse:
+    def __init__(self, status_code, error_data):
+        self.status_code = status_code
+        self._error_data = error_data
+    
+    def json(self):
+        return self._error_data
+
 class Generator:
     def __init__(self, nutrition_input: list, ingredients: list = [], params: dict = {'n_neighbors': 5, 'return_distance': False}):
         self.nutrition_input = nutrition_input
@@ -52,14 +60,11 @@ class Generator:
                     logger.error(f"Response text: {response.text[:500]}...")  # Log first 500 chars
                     
                     # Return a mock response with error information
-                    error_response = type('MockResponse', (), {
-                        'status_code': 500,
-                        'json': lambda: {
-                            'output': None,
-                            'error': f'Invalid JSON response from server: {str(e)}',
-                            'message': 'The server returned an invalid response format'
-                        }
-                    })()
+                    error_response = MockResponse(500, {
+                        'output': None,
+                        'error': f'Invalid JSON response from server: {str(e)}',
+                        'message': 'The server returned an invalid response format'
+                    })
                     return error_response
             else:
                 logger.error(f"HTTP error {response.status_code}: {response.text}")
@@ -69,48 +74,36 @@ class Generator:
                     return response
                 except json.JSONDecodeError:
                     # Return a mock response with error information
-                    error_response = type('MockResponse', (), {
-                        'status_code': response.status_code,
-                        'json': lambda: {
-                            'output': None,
-                            'error': f'HTTP {response.status_code}: {response.text}',
-                            'message': f'Server returned error status {response.status_code}'
-                        }
-                    })()
+                    error_response = MockResponse(response.status_code, {
+                        'output': None,
+                        'error': f'HTTP {response.status_code}: {response.text}',
+                        'message': f'Server returned error status {response.status_code}'
+                    })
                     return error_response
                     
         except requests.exceptions.Timeout:
             logger.error("Request timed out")
-            error_response = type('MockResponse', (), {
-                'status_code': 408,
-                'json': lambda: {
-                    'output': None,
-                    'error': 'Request timed out',
-                    'message': 'The server took too long to respond'
-                }
-            })()
+            error_response = MockResponse(408, {
+                'output': None,
+                'error': 'Request timed out',
+                'message': 'The server took too long to respond'
+            })
             return error_response
             
         except requests.exceptions.ConnectionError:
             logger.error("Connection error")
-            error_response = type('MockResponse', (), {
-                'status_code': 503,
-                'json': lambda: {
-                    'output': None,
-                    'error': 'Connection error',
-                    'message': 'Unable to connect to the server'
-                }
-            })()
+            error_response = MockResponse(503, {
+                'output': None,
+                'error': 'Connection error',
+                'message': 'Unable to connect to the server'
+            })
             return error_response
             
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
-            error_response = type('MockResponse', (), {
-                'status_code': 500,
-                'json': lambda: {
-                    'output': None,
-                    'error': f'Unexpected error: {str(e)}',
-                    'message': 'An unexpected error occurred while making the request'
-                }
-            })()
+            error_response = MockResponse(500, {
+                'output': None,
+                'error': f'Unexpected error: {str(e)}',
+                'message': 'An unexpected error occurred while making the request'
+            })
             return error_response
