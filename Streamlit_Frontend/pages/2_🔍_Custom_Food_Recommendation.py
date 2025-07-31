@@ -31,13 +31,30 @@ class Recommendation:
 
     def generate(self):
         params = {'n_neighbors': self.nb_recommendations, 'return_distance': False}
-        ingredients = self.ingredient_txt.split(';')
+        ingredients = self.ingredient_txt.split(';') if self.ingredient_txt else []
         generator = Generator(self.nutrition_list, ingredients, params)
-        recommendations = generator.generate()
-        recommendations = recommendations.json()['output']
-        if recommendations is not None:
-            for recipe in recommendations:
+        response = generator.generate()
+        response_data = response.json()
+        
+        # Handle the new response format with error checking
+        if response_data.get('error'):
+            st.error(f"Error generating recommendations: {response_data.get('error')}")
+            st.warning(f"Message: {response_data.get('message', 'No additional information')}")
+            return None
+            
+        recommendations = response_data.get('output', [])
+        if not recommendations:
+            st.warning(f"No recipes found. {response_data.get('message', '')}")
+            return None
+            
+        # Add image links to recipes
+        for recipe in recommendations:
+            try:
                 recipe['image_link'] = find_image(recipe['Name'])
+            except Exception as e:
+                st.warning(f"Could not find image for {recipe['Name']}: {e}")
+                recipe['image_link'] = "https://via.placeholder.com/300x200?text=No+Image"
+                
         return recommendations
 
 class Display:
@@ -46,7 +63,7 @@ class Display:
 
     def display_recommendation(self, recommendations):
         st.markdown("<h2 style='text-align: center; color: #4CAF50;'>Recommended Recipes 🍴</h2>", unsafe_allow_html=True)
-        if recommendations is not None:
+        if recommendations is not None and len(recommendations) > 0:
             rows = len(recommendations) // 5
             for column, row in zip(st.columns(5), range(5)):
                 with column:
@@ -55,27 +72,27 @@ class Display:
                         expander = st.expander(recipe_name, expanded=False)
                         recipe_link = recipe['image_link']
                         recipe_img = f'<div style="text-align: center;"><img src="{recipe_link}" alt="{recipe_name}" style="width:100%; border-radius:10px;"></div>'
-                        nutritions_df = pd.DataFrame({value: [recipe[value]] for value in nutrition_values})
+                        nutritions_df = pd.DataFrame({value: [recipe.get(value, 0)] for value in nutrition_values})
                         expander.markdown(recipe_img, unsafe_allow_html=True)
                         expander.markdown(f"<h5 style='text-align: center;'>Nutritional Values (g):</h5>", unsafe_allow_html=True)
                         expander.dataframe(nutritions_df)
                         expander.markdown("<h5>Ingredients:</h5>")
-                        for ingredient in recipe['RecipeIngredientParts']:
+                        for ingredient in recipe.get('RecipeIngredientParts', []):
                             expander.markdown(f"- {ingredient}")
                         expander.markdown("<h5>Instructions:</h5>")
-                        for instruction in recipe['RecipeInstructions']:
+                        for instruction in recipe.get('RecipeInstructions', []):
                             expander.markdown(f"- {instruction}")
                         expander.markdown("<h5>Cooking Times:</h5>")
                         expander.markdown(f"""
-                            - **Cook Time**: {recipe['CookTime']} min  
-                            - **Prep Time**: {recipe['PrepTime']} min  
-                            - **Total Time**: {recipe['TotalTime']} min  
+                            - **Cook Time**: {recipe.get('CookTime', 'N/A')} min  
+                            - **Prep Time**: {recipe.get('PrepTime', 'N/A')} min  
+                            - **Total Time**: {recipe.get('TotalTime', 'N/A')} min  
                         """)
         else:
-            st.info("No recipes found matching your ingredients.", icon="🙁")
+            st.info("No recipes found matching your criteria. Try adjusting your nutrition requirements or ingredients.", icon="🙁")
 
     def display_overview(self, recommendations):
-        if recommendations is not None:
+        if recommendations is not None and len(recommendations) > 0:
             st.markdown("<h2 style='text-align: center; color: #4CAF50;'>Recipe Overview 📊</h2>", unsafe_allow_html=True)
             col1, col2, col3 = st.columns(3)
             with col2:
@@ -91,7 +108,7 @@ class Display:
                         "type": "pie",
                         "radius": "50%",
                         "data": [
-                            {"value": selected_recipe[nutrition_value], "name": nutrition_value} for nutrition_value in self.nutrition_values
+                            {"value": selected_recipe.get(nutrition_value, 0), "name": nutrition_value} for nutrition_value in self.nutrition_values
                         ],
                         "emphasis": {
                             "itemStyle": {
@@ -105,6 +122,8 @@ class Display:
             }
             st_echarts(options=options, height="600px")
             st.caption("Tip: Click on a segment to highlight or hide its value.")
+        else:
+            st.info("No recipes available for overview analysis.", icon="📊")
 
 # Page title
 st.markdown("<h1 style='text-align: center;'>🍽️ Custom Food Recommendation System</h1>", unsafe_allow_html=True)
