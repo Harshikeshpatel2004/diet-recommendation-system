@@ -64,10 +64,51 @@ class Person:
         for meal, percentage in self.meals_calories_perc.items():
             meal_calories = percentage * total_calories
             generator = Generator([meal_calories, rnd(10, 30), rnd(0, 4), rnd(0, 30), rnd(0, 400), rnd(40, 75), rnd(4, 10), rnd(0, 10), rnd(30, 100)])
-            recommended_recipes = generator.generate().json()['output']
-            for recipe in recommended_recipes:
-                recipe['image_link'] = find_image(recipe['Name'])
-            recommendations.append(recommended_recipes)
+            
+            try:
+                response = generator.generate()
+                
+                # Check if response is valid
+                if not response or not hasattr(response, 'json'):
+                    st.error(f"Invalid response from API for {meal}")
+                    recommendations.append([])
+                    continue
+                
+                try:
+                    response_data = response.json()
+                except Exception as e:
+                    st.error(f"Failed to parse JSON response for {meal}: {e}")
+                    recommendations.append([])
+                    continue
+                
+                # Handle the new response format with error checking
+                if response_data.get('error'):
+                    st.error(f"Error generating recommendations for {meal}: {response_data.get('error')}")
+                    st.warning(f"Message: {response_data.get('message', 'No additional information')}")
+                    recommendations.append([])
+                    continue
+                    
+                recommended_recipes = response_data.get('output', [])
+                if not recommended_recipes:
+                    st.warning(f"No recipes found for {meal}. {response_data.get('message', '')}")
+                    recommendations.append([])
+                    continue
+                    
+                # Add image links to recipes
+                for recipe in recommended_recipes:
+                    try:
+                        recipe['image_link'] = find_image(recipe['Name'])
+                    except Exception as e:
+                        st.warning(f"Could not find image for {recipe['Name']}: {e}")
+                        recipe['image_link'] = "https://via.placeholder.com/300x200?text=No+Image"
+                        
+                recommendations.append(recommended_recipes)
+                
+            except Exception as e:
+                st.error(f"Unexpected error generating recommendations for {meal}: {e}")
+                recommendations.append([])
+                continue
+                
         return recommendations
 
 
@@ -105,9 +146,11 @@ class Display:
         # Total calories chosen by the user
         total_nutrition_values = {nutrition: 0 for nutrition in nutritions_values}
         for meal_recommendation in recommendations:
+            if not meal_recommendation:  # Skip empty meal recommendations
+                continue
             for recipe in meal_recommendation:
                 for nutrition in nutritions_values:
-                    total_nutrition_values[nutrition] += recipe[nutrition]
+                    total_nutrition_values[nutrition] += recipe.get(nutrition, 0)
 
         # Total calories vs weight loss plan
         total_calories = total_nutrition_values['Calories']
@@ -146,11 +189,14 @@ class Display:
         for meal, recommendation, col in zip(person.meals_calories_perc.keys(), recommendations, st.columns(len(recommendations))):
             with col:
                 st.subheader(meal.capitalize())
+                if not recommendation:
+                    st.warning(f"No recipes found for {meal}. Try adjusting your nutrition requirements.")
+                    continue
                 for recipe in recommendation:
                     with st.expander(recipe['Name']):
                         st.markdown(f"![{recipe['Name']}]({recipe['image_link']})")
-                        st.markdown(f"**Ingredients:** {', '.join(recipe['RecipeIngredientParts'])}")
-                        st.markdown(f"**Instructions:** {', '.join(recipe['RecipeInstructions'])}")
+                        st.markdown(f"**Ingredients:** {', '.join(recipe.get('RecipeIngredientParts', []))}")
+                        st.markdown(f"**Instructions:** {', '.join(recipe.get('RecipeInstructions', []))}")
 
 
 # Form for user input
@@ -181,8 +227,13 @@ if st.session_state.person:
     display.display_calories(st.session_state.person)
 
     if st.button("Generate Recommendations"):
-        st.session_state.recommendations = st.session_state.person.generate_recommendations()
-        st.success("Recommendations generated!")
+        try:
+            with st.spinner("Generating recommendations..."):
+                st.session_state.recommendations = st.session_state.person.generate_recommendations()
+            st.success("Recommendations generated!")
+        except Exception as e:
+            st.error(f"Error generating recommendations: {e}")
+            st.session_state.recommendations = None
 
     if st.session_state.recommendations:
         display.display_comparison_chart(st.session_state.person, st.session_state.recommendations)

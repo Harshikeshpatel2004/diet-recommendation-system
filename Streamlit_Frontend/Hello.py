@@ -23,12 +23,15 @@ st.write(
 )
 
 # Add an image or banner (optional)
-st.image(
-    "Dietimage.png",
-    caption="Healthy food for a healthy life!",
-    width=500,
-    
-)
+try:
+    st.image(
+        "Dietimage.png",
+        caption="Healthy food for a healthy life!",
+        width=500,
+    )
+except Exception as e:
+    st.info("Welcome to the Diet Recommendation System! 🥗")
+    st.write("Your personal assistant for healthier and smarter food choices!")
 
 # Sidebar content
 st.sidebar.title("Diet Recommendation System")
