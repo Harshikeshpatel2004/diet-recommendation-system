@@ -49,26 +49,62 @@ def load_dataset():
     try:
         # Use os.path.join for portable file paths
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        dataset_path = os.path.join(current_dir, 'Data', 'dataset.csv')
         
-        logger.info(f"Attempting to load dataset from: {dataset_path}")
+        # Try optimized dataset first, then fallback to original
+        optimized_path = os.path.join(current_dir, 'Data', 'dataset_optimized.csv')
+        original_path = os.path.join(current_dir, 'Data', 'dataset.csv')
         
-        if not os.path.exists(dataset_path):
-            logger.error(f"Dataset file not found at: {dataset_path}")
-            return None, f"Dataset file not found at: {dataset_path}"
-        
-        # Try to load with compression first, then without
-        try:
-            dataset = pd.read_csv(dataset_path, compression='gzip')
-            logger.info("Dataset loaded successfully with gzip compression")
-        except Exception as e:
-            logger.warning(f"Failed to load with gzip compression: {e}")
+        # Try to load optimized dataset first, then test dataset, then original
+        if os.path.exists(optimized_path):
+            logger.info(f"Attempting to load optimized dataset from: {optimized_path}")
             try:
-                dataset = pd.read_csv(dataset_path)
-                logger.info("Dataset loaded successfully without compression")
-            except Exception as e2:
-                logger.error(f"Failed to load dataset: {e2}")
-                return None, f"Failed to load dataset: {str(e2)}"
+                dataset = pd.read_csv(optimized_path, compression='gzip')
+                logger.info("Optimized dataset loaded successfully with gzip compression")
+            except Exception as e:
+                logger.warning(f"Failed to load optimized dataset with gzip: {e}")
+                try:
+                    dataset = pd.read_csv(optimized_path)
+                    logger.info("Optimized dataset loaded successfully without compression")
+                except Exception as e2:
+                    logger.error(f"Failed to load optimized dataset: {e2}")
+                    dataset = None
+        else:
+            logger.info("Optimized dataset not found, trying test dataset")
+            dataset = None
+        
+        # If optimized dataset failed, try test dataset
+        if dataset is None:
+            test_path = os.path.join(current_dir, 'Data', 'dataset_test.csv')
+            if os.path.exists(test_path):
+                logger.info(f"Attempting to load test dataset from: {test_path}")
+                try:
+                    dataset = pd.read_csv(test_path)
+                    logger.info("Test dataset loaded successfully")
+                except Exception as e:
+                    logger.error(f"Failed to load test dataset: {e}")
+                    dataset = None
+            else:
+                logger.info("Test dataset not found, trying original dataset")
+                dataset = None
+        
+        # If optimized dataset failed or doesn't exist, try original
+        if dataset is None and os.path.exists(original_path):
+            logger.info(f"Attempting to load original dataset from: {original_path}")
+            try:
+                dataset = pd.read_csv(original_path, compression='gzip')
+                logger.info("Original dataset loaded successfully with gzip compression")
+            except Exception as e:
+                logger.warning(f"Failed to load original dataset with gzip: {e}")
+                try:
+                    dataset = pd.read_csv(original_path)
+                    logger.info("Original dataset loaded successfully without compression")
+                except Exception as e2:
+                    logger.error(f"Failed to load original dataset: {e2}")
+                    return None, f"Failed to load dataset: {str(e2)}"
+        
+        if dataset is None:
+            logger.error("No dataset file found")
+            return None, "No dataset file found. Please ensure dataset.csv or dataset_optimized.csv exists in the Data folder."
         
         if dataset.empty:
             logger.error("Dataset is empty")
